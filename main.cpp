@@ -10,17 +10,15 @@ class Token;
 enum token_type{
     IDENTIFER,
     KEY,
-    NUM,
-    PUNC
+    LITERAL,
+    PUNC,
+    EOT//End of tokens
 };
 
 enum node_type{
     FIL,
-    INT,
-    FLOAT,
-    ADD,
-    SUB,
-    MUL,
+    KINT,
+    NUMINT, 
     DIV,
     SEMI,
     RET,
@@ -28,6 +26,10 @@ enum node_type{
     VAR,
     LBRACE,
     RBRACE,
+    LPAREN,
+    RPAREN,
+    LBOX,
+    RBOX,
     
 
 };
@@ -49,40 +51,49 @@ class Node{
         
 
         Node(){}
-        Node(Node* parent ,string str, node_type type){
-            this->parent = parent;
+        Node(string str, node_type type){
+            //this->parent = parent;
             this->str = str;
             this->type = type;
+        }
+        void child(Node* c){
+            if(lchild->str.size() != 0){
+                rchild = c;
+            }
+            else    lchild = c;
         }
 };
 
 class Expression{
     public:
-        int val_int;
+        int val;
         
 };
 
 class Statement{
     public:
-        vector<Expression> expressions;
+        string str;
+        Expression* exps;
+        
 };
 
 class Function{
     public:
-        vector<Statement> statements;
-    
+        Statement *statements;
+        string name;
 };
 
 class Program{
     public:
-        vector<Function> functions;
+        Function *functions;
 };
 
 class Token{
     private:
         string str="";
         token_type type=KEY;
-
+        Token* next_token;
+        
     public:
         Token(){}
         Token(string str, token_type type){
@@ -91,12 +102,125 @@ class Token{
         }
         void show(){cout << str << " : " << type << endl;} 
         token_type get_type(){return type;}
-        string get_str(){return this->str;}
+        string get_str(){return str;}
+        void set_next(Token* t){
+            next_token = t;
+        }
+        Token* next(){return next_token;}
+        static bool check(Token *t, string str){
+            if(t->get_str() == str){
+                t = t->next();
+                return true;
+            }
+            return false;
+        }
+ 
+        static bool check_type(Token *t, token_type type){
+            if(t->get_type() == type){
+                t = t->next();
+                return true;
+            }
+            return false;
+        }
 };
 
+
+//func =    int identifer (stat*){stat}
+Function* function(Token* tokens){
+    Function *f = new Function();
+    return f;
+}
+
+//stat =    return exp;
+Statement* statement(Token* tokens){
+    Statement *s = new Statement();
+    Token *t = tokens;
+    while(t->get_str() != "}"){
+        while(t->get_str() != ";"){
+            if(Token::check(t, "return")){
+                s->str = "return";
+                Expression exp;
+                exp.val = stoi(t->get_str());
+                t = t->next();
+                s->exps = &exp;
+            }
+        }
+        t = t->next();
+    }
+    t = t->next();
+    return s;
+}
+
+// prog =   func
+Program* parse(Token* tokens){
+    Program *prog = new Program();
+
+    Function func;
+    Statement stat;
+
+    Token *t = tokens->next();
+    while(t->get_type() != EOT){
+        Function *func = new Function();
+
+        if(!Token::check(t, "int")){
+            t = t->next();
+            continue;
+        }
+        if(t->get_type() != IDENTIFER){
+            t = t->next();
+            continue;
+        }
+        func->name = t->get_str();
+        if(!Token::check(t, "(")){
+            t = t->next();
+            continue;
+        }
+        if(!Token::check(t, ")")){
+            t = t->next();
+            continue;
+        }
+        if(!Token::check(t, "{")){
+            t = t->next();
+            continue;
+        }
+        Statement *stat = statement(t);
+        func->statements = stat;
+        prog->functions = func;
+    }
+
+    return prog;
+}
+   
+   
+void space(int levels){
+    for(int i=0;i<levels;i++) cout << "    " ;
+}
+void Pretty_printing(Program* prog){
+    //cout << "PROGRAM " << endl;
+    Function *func = prog->functions;
+    int level = 1;
+    while(func != nullptr){
+        cout << "FUN INT "<< func->name << ":"<<endl;
+        space(1);
+        cout << "params:"<<endl;
+        space(1);
+        cout <<"body:"<<endl;
+        Statement* stat = func->statements;
+        level++;
+        while(stat != nullptr){
+            Expression *exp = stat->exps;
+            space(level);
+            cout << "RETURN " << exp->val << endl;
+        }
+        level--;
+    }
+        
+}
+
 int main(void){
+    cout << "begin" << endl;
     ifstream infile;
-    infile.open("C:\\data\\code\\mycc\\return_2.c",ios::in);
+    infile.open(".\\test\\test.c",ios::in);
     if(!infile.is_open()){
         cout << "false"<<endl;
         return 0;
@@ -107,8 +231,9 @@ int main(void){
         buff.push_back(line);
     }
     
-    vector<Token> tokens;
-    vector<string> token_strs;
+    Token *tokens = new Token();
+    Token *pre = tokens;
+    Token test = Token("test",EOT);
     regex re_op("[\\+\\-\\*\\/]");
     regex re_num("[0-9]+");
     regex re_keyword("int|return|float");
@@ -119,59 +244,36 @@ int main(void){
         regex_iterator<string::iterator> rend;
         while(reg_it != rend){
             string str = reg_it->str();
-            Token token;
+            Token *token = new Token();
             if(regex_match(str, re_key) || regex_match(str, re_keyword)){
-                token = Token(str, KEY);
+                *token = Token(str, KEY);
             }
             else if(regex_match(str, re_num)){
-                token = Token(str, NUM);
+                *token = Token(str, LITERAL);
             }
             else{
-                token = Token(str, IDENTIFER);
+                *token = Token(str, IDENTIFER);
             }
-            tokens.push_back(token);
+            pre->set_next(token);
+            pre = token; 
 
-            token_strs.push_back(str);
             reg_it++;
         }
     }
-    
-    // for(auto token: tokens){
-    //     token.show();
-    // }
-    
-    vector<Node> nodes;
-    Node root(nullptr,"root",FIL);
-    nodes.push_back(root);
-    Node parent = root;
-    for(auto it=tokens.begin(); it!=tokens.end();it++){
-        Node node;
-        string str = it->get_str();
-        token_type t_type = it->get_type();
-        if(it->get_type() == IDENTIFER){
-            if(next(it,1)->get_str()=="("){
-                // cout << str << endl;
-                node = Node(&parent, str, FUN);
-            }
-            else{
-                node = Node(&parent, str, VAR);
-            }
-        }
-        else if(it->get_type() == KEY){
-            if(str == "int") node = Node(&parent, str, INT);
-            if(str == "return") node = Node(&parent, str, RET);
-            if(str == "(") node = Node(&parent, str, LBRACE);
-        }
-    }
-    
-
-
-
-    cout << "over" << endl;
-
+    Token t_end("", EOT);
+    pre->set_next(&t_end);
     infile.close();
+
+    Token *t = tokens->next();
+    while (t->get_type()!= EOT){
+        t->show();
+        t = t->next();
+    }
+    Program *prog = parse(tokens); 
+    Pretty_printing(prog);
+    
+    // cout << "over" << endl;
+
     
     return 0;
 }
-
-// 
