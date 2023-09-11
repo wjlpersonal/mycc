@@ -73,26 +73,26 @@ class Expression{
 class Statement{
     public:
         string str;
-        Expression* exps;
+        Expression* exps = nullptr;
         
 };
 
 class Function{
     public:
-        Statement *statements;
+        Statement *statements = nullptr;
         string name;
 };
 
 class Program{
     public:
-        Function *functions;
+        Function *functions = nullptr;
 };
 
 class Token{
     private:
         string str="";
         token_type type=KEY;
-        Token* next_token;
+        Token* next_token = nullptr;
         
     public:
         Token(){}
@@ -108,13 +108,9 @@ class Token{
         }
         Token* next(){return next_token;}
         static bool check(Token *t, string str){
-            if(t->get_str() == str){
-                t = t->next();
-                return true;
-            }
-            return false;
-        }
- 
+            return t->get_str() == str;
+        } 
+
         static bool check_type(Token *t, token_type type){
             if(t->get_type() == type){
                 t = t->next();
@@ -123,7 +119,28 @@ class Token{
             return false;
         }
 };
+static bool consume(Token **rest, Token *t, string str){
+    if(t->get_str()== str){
+        *rest = t->next();
+        return true;
+    }
+    *rest = t;
+    return false;
+}
 
+static Token* skip(Token *t, string str){
+    if(Token::check(t, str)){
+        return t->next();
+    }
+    return t;
+}
+ 
+
+bool is_number(const std::string& s)
+{
+    return !s.empty() && std::find_if(s.begin(), 
+        s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
+}
 
 //func =    int identifer (stat*){stat}
 Function* function(Token* tokens){
@@ -132,22 +149,46 @@ Function* function(Token* tokens){
 }
 
 //stat =    return exp;
-Statement* statement(Token* tokens){
+Statement* statement(Token** rest, Token* tokens){
     Statement *s = new Statement();
     Token *t = tokens;
     while(t->get_str() != "}"){
+        if(t->get_type() == EOT){
+            cout << "need }" << endl;
+            exit(1);
+        }
         while(t->get_str() != ";"){
+            if(t->get_type() == EOT){
+                cout << "need ;" << endl;
+                exit(1);
+            }
             if(Token::check(t, "return")){
                 s->str = "return";
-                Expression exp;
-                exp.val = stoi(t->get_str());
+                Expression *exp = new Expression();
                 t = t->next();
-                s->exps = &exp;
+                if(t->get_type() != LITERAL){
+                    cout << "return value wrong "<< endl;
+                    exit(1);
+                }
+                if(!is_number(t->get_str())){
+                    cout << "return value is not a number "<<endl;
+                    exit(1);
+                }
+                exp->val = stoi(t->get_str());
+                t = t->next();
+                s->exps = exp;
+                continue;
             }
+            t = t->next();
         }
         t = t->next();
     }
     t = t->next();
+    *rest = t;
+    if(s->exps == nullptr){
+        cout << "no return statement" << endl;
+        exit(0);
+    }
     return s;
 }
 
@@ -160,9 +201,9 @@ Program* parse(Token* tokens){
 
     Token *t = tokens->next();
     while(t->get_type() != EOT){
+        // cout << t->get_str()<< endl;
         Function *func = new Function();
-
-        if(!Token::check(t, "int")){
+        if(!consume(&t, t, "int")){
             t = t->next();
             continue;
         }
@@ -171,56 +212,91 @@ Program* parse(Token* tokens){
             continue;
         }
         func->name = t->get_str();
-        if(!Token::check(t, "(")){
+        t = t->next();
+        if(!consume(&t, t, "(")){
             t = t->next();
             continue;
         }
-        if(!Token::check(t, ")")){
+        if(!consume(&t, t, ")")){
             t = t->next();
             continue;
         }
-        if(!Token::check(t, "{")){
+        if(!consume(&t, t, "{")){
             t = t->next();
             continue;
         }
-        Statement *stat = statement(t);
+        Statement *stat = statement(&t, t);
         func->statements = stat;
         prog->functions = func;
     }
 
     return prog;
 }
-   
-   
-void space(int levels){
-    for(int i=0;i<levels;i++) cout << "    " ;
+    
+string space(int levels){
+    string spc =  "    "; 
+    string ret = "";
+    for(int i=0;i<levels;i++) ret += spc;
+    return ret;
 }
 void Pretty_printing(Program* prog){
     //cout << "PROGRAM " << endl;
     Function *func = prog->functions;
     int level = 1;
-    while(func != nullptr){
+    if(func != nullptr){
         cout << "FUN INT "<< func->name << ":"<<endl;
-        space(1);
-        cout << "params:"<<endl;
-        space(1);
-        cout <<"body:"<<endl;
+        cout<<space(level) << "params:"<<endl;
+        cout <<space(level) <<"body:"<<endl;
         Statement* stat = func->statements;
         level++;
-        while(stat != nullptr){
+        if(stat != nullptr){
             Expression *exp = stat->exps;
-            space(level);
-            cout << "RETURN " << exp->val << endl;
+            cout <<space(level) << "RETURN " << exp->val << endl;
         }
         level--;
     }
         
 }
 
-int main(void){
-    cout << "begin" << endl;
+
+string gen_ret(Statement *stat){
+    Expression *exp = stat->exps;
+    string num = to_string(exp->val);
+    string cmd = regex_replace("movl    $\%d, \%eax", regex("\%d"), num);
+    string ret = "";
+    ret += space(1)+cmd + "\n";
+    cmd = "ret";
+    ret += space(1)+cmd;
+    return ret;
+}
+string codegen(Program* prog){
+    string ret = "";
+    string fun= ".global _$\n_$:";
+    Function *func = prog->functions;
+    string name = func->name;
+    fun = regex_replace(fun, regex("[$]"), name);
+    ret.append(fun + "\n");
+    ret.append(gen_ret(func->statements));
+    ret.append("\n");
+    return ret;
+    
+}
+int main(int argc, char* argv[]){
+    //if(argc != 2){
+        //cout << "wrong line number" <<endl;
+        //return 0;
+    //}
+    string addr ;
+    //addr = argv[1];
+    addr = "./test/test.c";
+    string filename = addr.substr(addr.find_last_of("/\\")+1);
+    string path = string(addr.begin(), addr.end()-filename.size());
+    // cout << path << endl;
+    filename = string(filename.begin(),filename.end()-2);
+    // cout << filename << endl;
+    
     ifstream infile;
-    infile.open(".\\test\\test.c",ios::in);
+    infile.open(addr,ios::in);
     if(!infile.is_open()){
         cout << "false"<<endl;
         return 0;
@@ -266,14 +342,35 @@ int main(void){
 
     Token *t = tokens->next();
     while (t->get_type()!= EOT){
-        t->show();
+        // t->show();
+        // cout << t->get_type() << endl;
         t = t->next();
     }
     Program *prog = parse(tokens); 
-    Pretty_printing(prog);
+
+    if(prog == nullptr){
+        cout << "parsing errror: program"<<endl;
+        exit(1);
+    }
+    if(prog->functions == nullptr){
+        cout << "parsing error: no function" << endl;
+        exit(1);
+    }
+    //Pretty_printing(prog);
     
     // cout << "over" << endl;
+    string code =  codegen(prog);
+    cout << code << endl;
 
+    fstream outfile(path+"assembly.s", ios::out);
+    outfile << code;
+    outfile.close();
     
+    string command = "gcc -m32 "+path+"assembly.s -o "+path+filename;
+    system(command.c_str());
+
+    string apath = path+"assembly.s";
+    remove(apath.c_str());
+
     return 0;
 }

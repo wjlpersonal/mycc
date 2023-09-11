@@ -3,3 +3,7 @@ main.exe
 .vscode/tasks.json
 *.log
 *.exe
+test/*
+exp.cpp
+*.s
+*.o

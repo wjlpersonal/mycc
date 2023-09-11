@@ -5,9 +5,12 @@ int* test(void){
     int* b = &a;
     return b;
 }
+
+class 
+
 int main(void){
    for(int i=0;i<10;i++){
     int *p = new int;
-
+    
    }
 }
