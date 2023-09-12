@@ -1,4 +1,4 @@
-#include <mycc.h>
+#include "mycc.h"
 
 void err_print(string str){
     cout << str << endl;
@@ -10,7 +10,7 @@ bool is_number(const std::string& s){
         s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }
 
-static bool consume(Token **rest, Token *t, string str){
+bool consume(Token **rest, Token *t, string str){
     if(t->get_str()== str){
         *rest = t->next();
         return true;
@@ -19,7 +19,7 @@ static bool consume(Token **rest, Token *t, string str){
     return false;
 }
 
-static Token* skip(Token *t, string str){
+Token* skip(Token *t, string str){
     if(t->check(str)){
         return t->next();
     }

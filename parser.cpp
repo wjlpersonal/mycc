@@ -1,4 +1,10 @@
-#include <mycc.h>
+#include "mycc.h"
+
+Node* expression(Token** rest, Token* t);
+Function* function(Token* tokens);
+Node* unary(Token**rest, Token* t);
+Node* compound(Token** rest, Token* t);
+Program* parse(Token* tokens);
 
 //unary     =   op exp
 Node* unary(Token**rest, Token* t){
@@ -106,6 +112,9 @@ Program* parse(Token* tokens){
         prog->functions = func;
     }
 
+    if(prog == nullptr) err_print( "parsing errror: program");
+    if(prog->functions == nullptr) err_print("parsing error: no function");
+  
     return prog;
 }
  

@@ -1,10 +1,10 @@
-SRCS=$(wildcard *.c)
-OBJS=$(SRCS:.c=.o)
+SRCS=$(wildcard *.cpp)
+OBJS=$(SRCS:.cpp=.o)
 
 mycc: $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	g++  -o $@ $^ $(LDFLAGS)
 
 $(OBJS): mycc.h
 
 clean:
-	rm -f chibicc *.o *~ tmp*
+	del -rf *.o

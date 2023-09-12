@@ -14,9 +14,9 @@ class Program;
 //util.cpp
 void err_print(string str);
 bool is_number(const std::string& s);
-static bool consume(Token **rest, Token *t, string str);
+bool consume(Token **rest, Token *t, string str);
 string space(int levels);
-static Token* skip(Token *t, string str);
+Token* skip(Token *t, string str);
 void Pretty_printing(Program* prog);
 
 

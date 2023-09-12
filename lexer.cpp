@@ -1,4 +1,4 @@
-#include <mycc.h>
+#include "mycc.h"
 
 Token* lex(vector<string> buff){
     Token *tokens = new Token();

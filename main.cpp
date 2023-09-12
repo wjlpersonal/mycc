@@ -1,4 +1,4 @@
-#include <mycc.h>
+#include "mycc.h"
 
 int main(int argc, char* argv[]){
     //if(argc != 2) err_print("wrong argc");
@@ -20,15 +20,13 @@ int main(int argc, char* argv[]){
     infile.close();
 
     Token *tokens = lex(buff);
-    Token *t = tokens;
-    while(t->get_type() != EOT){
-        cout << t->get_str() <<endl;
-        t = t->next();
-    }
+    //Token *t = tokens;
+//    while(t->get_type() != EOT){
+        //cout << t->get_str() <<endl;
+        //t = t->next();
+    //}
     Program *prog = parse(tokens); 
 
-    if(prog == nullptr) err_print( "parsing errror: program");
-    if(prog->functions == nullptr) err_print("parsing error: no function");
     Pretty_printing(prog);
     
     string code =  codegen(prog);

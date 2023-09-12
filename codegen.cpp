@@ -1,6 +1,10 @@
-#include <mycc.h>
+#include "mycc.h"
 
-string gen_ret(Node* stat){
+
+string gen_stat(Node* stat){
+    
+}
+string gen_expr(Node* stat){
     Node* exp = stat->lchild;
     string num = to_string(exp->val_int);
     string cmd = regex_replace("movl    $\%d, \%eax", regex("\%d"), num);
@@ -10,6 +14,7 @@ string gen_ret(Node* stat){
     ret += space(1)+cmd;
     return ret;
 }
+
 string codegen(Program* prog){
     string ret = "";
     string fun= ".global _$\n_$:";
@@ -17,7 +22,7 @@ string codegen(Program* prog){
     string name = func->name;
     fun = regex_replace(fun, regex("[$]"), name);
     ret.append(fun + "\n");
-    ret.append(gen_ret(func->body));
+    ret.append(gen_expr(func->body));
     ret.append("\n");
     return ret;
     
