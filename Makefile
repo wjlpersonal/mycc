@@ -1,10 +1,9 @@
-SRCS=$(wildcard *.cpp)
-OBJS=$(SRCS:.cpp=.o)
+OBJS=*.cpp
 
 mycc: $(OBJS)
-	g++  -o $@ $^ $(LDFLAGS)
+	g++ -g -o $@ $^ 
 
 $(OBJS): mycc.h
 
 clean:
-	del -rf *.o
+	rm *.o mycc

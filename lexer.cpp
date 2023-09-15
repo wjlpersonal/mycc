@@ -8,7 +8,7 @@ Token* lex(vector<string> buff){
     regex re_num("[0-9]+");
     regex re_keyword("int|return|float");
     regex re_key("[\\(\\)\\{\\}\\[\\]\\;]");
-    regex re("[\\(\\)\\{\\}\\[\\]\\;\\-\\!\\~]|[^\\(\\)\\{\\}\\[\\]\\;\\s]+");
+    regex re("[\\(\\)\\{\\}\\[\\]\\;\\-\\!\\~\\+\\*\\/]|[^\\(\\)\\{\\}\\[\\]\\;\\s\\+\\-\\*\\/]+");
     for (auto line : buff){
         regex_iterator<string::iterator> reg_it(line.begin(), line.end(), re);
         regex_iterator<string::iterator> rend;

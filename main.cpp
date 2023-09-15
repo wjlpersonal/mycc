@@ -1,10 +1,18 @@
 #include "mycc.h"
+#include <glob.h>
 
-int main(int argc, char* argv[]){
-    //if(argc != 2) err_print("wrong argc");
-    string addr;
-    //addr = argv[1];
-    addr = "./test/test.c";
+vector<string> globVector(const string& pattern){
+    glob_t glob_result;
+    glob(pattern.c_str(),GLOB_TILDE,NULL,&glob_result);
+    vector<string> files;
+    for(unsigned int i=0;i<glob_result.gl_pathc;++i){
+        files.push_back(string(glob_result.gl_pathv[i]));
+    }
+    globfree(&glob_result);
+    return files;
+}
+
+int test(string addr){
     string filename = addr.substr(addr.find_last_of("/\\")+1);
     string path = string(addr.begin(), addr.end()-filename.size());
     filename = string(filename.begin(),filename.end()-2);
@@ -28,7 +36,8 @@ int main(int argc, char* argv[]){
     Program *prog = parse(tokens); 
 
     Pretty_printing(prog);
-    
+
+	/*
     string code =  codegen(prog);
     cout << endl<<"codegen:"<<endl << code << endl;
 
@@ -42,5 +51,23 @@ int main(int argc, char* argv[]){
     string apath = path+"assembly.s";
     remove(apath.c_str());
 
+	*/
+
+
     return 0;
 }
+
+
+int main(void){
+	vector<string> files = globVector("./test/stage_3/valid/*");
+	for(auto file: files){
+		cout <<file <<endl;
+		test(file);
+	}
+	return 0;
+}
+
+
+
+
+	

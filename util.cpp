@@ -33,6 +33,21 @@ string space(int levels){
     return ret;
 }
 
+string print_expr(Node* node){
+	if(node == nullptr) return "";
+	if(node->type == NUM)
+		return node->token->get_str();
+	string ret = "";
+	Node *l = node->lchild;
+	Node *r = node->rchild;
+	ret.append("(");
+	ret.append(print_expr(l));
+	ret.append(node->token->get_str());
+	ret.append(print_expr(r));
+	ret.append(")");
+	return ret;
+}
+
 void Pretty_printing(Program* prog){
     Function *func = prog->functions;
     int level = 1;
@@ -45,10 +60,7 @@ void Pretty_printing(Program* prog){
         if(body != nullptr){
             Node* exp = body->lchild;
             cout <<space(level) << "RETURN ";
-            while(exp != nullptr){
-                cout << exp->token->get_str();
-                exp = exp->lchild;
-            }
+			cout << print_expr(exp);
             cout << endl;
         }
         level--;

@@ -41,6 +41,10 @@ enum node_type{
     NEG,
     BCPL,
     LNEG,
+	ADD,
+	SUB,
+	MUL,
+	DIV,
 };
 
 
@@ -52,7 +56,7 @@ class Node{
     Node *lchild=nullptr;
     Node *rchild=nullptr;
 
-    int  val_int;
+    int  val_int = 0;
 
     Node(){}
     Node(Token* t, node_type ty){

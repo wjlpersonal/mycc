@@ -1,9 +1,5 @@
 #include "mycc.h"
 
-
-string gen_stat(Node* stat){
-    
-}
 string gen_expr(Node* stat){
     Node* exp = stat->lchild;
     string num = to_string(exp->val_int);

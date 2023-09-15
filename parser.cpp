@@ -1,54 +1,33 @@
 #include "mycc.h"
 
+
+Node* new_node(Token* t, node_type ty){
+	Node* n = new Node();
+	*n = Node(t, ty);
+	return n;
+}
+
+Node* new_binary(Token* t, node_type ty, Node* l, Node* r){
+	Node* n = new_node(t, ty);
+	n->lchild = l;
+	n->rchild = r;
+	return n;
+}
+
 Node* expression(Token** rest, Token* t);
 Function* function(Token* tokens);
+Node* term(Token**rest, Token* t);
+Node* factor(Token**rest, Token* t);
+Node* primary(Token**rest, Token* t);
+Node* statement(Token**rest, Token* t);
 Node* unary(Token**rest, Token* t);
 Node* compound(Token** rest, Token* t);
 Program* parse(Token* tokens);
-
-//unary     =   op exp
-Node* unary(Token**rest, Token* t){
-    Node *u = new Node();
-    Node *exp;
-    if(t->get_type() != PUNCT) err_print("not a unary");
-    if(t->check("-")){
-        *u = Node(t, NEG);
-    }
-    if(t->check("~")){
-        *u = Node(t,BCPL);
-    }
-    if(t->check("!")){
-        *u = Node(t, LNEG);
-    }
-    t = t->next();
-    exp = expression(rest, t);
-    u->lchild = exp;
-    if(u->lchild == nullptr) err_print("no unary expr");
-    return u;
-}
 
 //func =    int identifer (stat*){stat}
 Function* function(Token* tokens){
     Function *f = new Function();
     return f;
-}
-
-//expr      =   primary | unary
-Node* expression(Token** rest, Token* t){
-    Node *exp;
-    if(t->get_type() == LITNUM){
-        exp = new Node();
-        *exp = Node(t, NUM);
-        exp->val_int = stoi(t->get_str().c_str());
-        *rest = t->next();
-        return exp;
-    }
-    if(t->get_type() == PUNCT){
-        exp = unary(rest, t);
-        return exp;
-    }
-    err_print("not valid expr");
-    return nullptr;
 }
 
 //stat =    return exp;
@@ -74,6 +53,84 @@ Node* compound(Token** rest, Token* t){
     *rest = t;
     if(s->lchild == nullptr) err_print("need a return stat");
     return s;
+}
+
+//expression		= term +- term
+Node* expression(Token**rest, Token* t){
+	Node *n = term(rest, t);
+	t = *rest;
+	while(true){
+		Token* next = t->next();
+		if(t->check("+")){
+			n = new_binary(t, ADD, n, term(&next, next));
+			t = next;
+			continue;
+		}
+		if(t->check("-")){
+			n = new_binary(t, MUL, n, term(&next, next));
+			t = next;
+			continue;
+		}
+		*rest = t;
+		return n;
+	}
+}
+
+//term		= factor */ factor
+Node* term(Token**rest, Token* t){
+	Node *n = factor(rest, t);
+	t = *rest;
+	while(true){
+		Token* next = t->next();
+		if(t->check("*")){
+			n = new_binary(t, MUL, n, factor(&next, next));
+			t = next;
+			continue;
+		}
+		if(t->check("/")){
+			n = new_binary(t, DIV, n, factor(&next, next));
+			t = next;
+			continue;
+		}
+		*rest = t;
+		return n;
+	}
+}
+
+//factor     =   op factor | primary 
+Node* factor(Token**rest, Token* t){
+    if(t->get_type() != PUNCT) 
+		return primary(rest, t);
+    Node *u = new Node();
+    if(t->check("-")){
+        *u = Node(t, NEG);
+    }
+    if(t->check("~")){
+        *u = Node(t,BCPL);
+    }
+    if(t->check("!")){
+        *u = Node(t, LNEG);
+    }
+    t = t->next();
+    u->rchild = factor(rest, t);
+    if(u->rchild == nullptr) err_print("no unary expr");
+    return u;
+}
+
+//primary = ( expr ) | num
+Node* primary(Token** rest, Token* t){
+	if(t->check("(")){
+		t = t->next();
+		Node* expr = expression(rest, t);
+		t = *rest;
+		if(! t->check(")")) err_print("need a )");
+		*rest = t->next();
+		return expr;
+	}
+	Node *p = new Node();
+	p = new_node(t, NUM);
+	*rest = t->next();
+	return p;
 }
 
 // prog =   func
