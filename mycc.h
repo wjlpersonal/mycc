@@ -41,10 +41,20 @@ enum node_type{
     NEG,
     BCPL,
     LNEG,
+	LT,
+	LE,
+	GT,
+	GE,
+	NE,
+	OR,
+	AND,
+	EQUAL,
 	ADD,
 	SUB,
 	MUL,
 	DIV,
+	ASSIGN,
+
 };
 
 

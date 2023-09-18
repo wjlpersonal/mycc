@@ -12,7 +12,7 @@ vector<string> globVector(const string& pattern){
     return files;
 }
 
-int test(string addr){
+int compile(string addr){
     string filename = addr.substr(addr.find_last_of("/\\")+1);
     string path = string(addr.begin(), addr.end()-filename.size());
     filename = string(filename.begin(),filename.end()-2);
@@ -28,15 +28,18 @@ int test(string addr){
     infile.close();
 
     Token *tokens = lex(buff);
-    //Token *t = tokens;
-//    while(t->get_type() != EOT){
-        //cout << t->get_str() <<endl;
-        //t = t->next();
-    //}
+	/*
+    Token *t = tokens;
+    while(t->get_type() != EOT){
+        cout << t->get_str() <<endl;
+        t = t->next();
+    }
+	*/
+
     Program *prog = parse(tokens); 
 
     Pretty_printing(prog);
-
+	
 	/*
     string code =  codegen(prog);
     cout << endl<<"codegen:"<<endl << code << endl;
@@ -50,24 +53,26 @@ int test(string addr){
 
     string apath = path+"assembly.s";
     remove(apath.c_str());
-
 	*/
 
 
     return 0;
 }
-
-
-int main(void){
-	vector<string> files = globVector("./test/stage_3/valid/*");
+	
+int main(int argc, char* argv[]){
+	if(argc == 1){
+		vector<string> files = globVector("./test/stage_4/valid/*");
+		for(auto file: files){
+			cout <<file <<endl;
+			compile(file);
+		}
+	}
+	if(argc > 2) err_print("too many args");
+	string path = argv[1];
+	vector<string> files = globVector(path);
 	for(auto file: files){
 		cout <<file <<endl;
-		test(file);
-	}
+		compile(file);
+	}	
 	return 0;
 }
-
-
-
-
-	

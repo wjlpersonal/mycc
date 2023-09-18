@@ -1,5 +1,21 @@
 #include "mycc.h"
 
+Node* new_node(Token* t, node_type ty);
+Node* new_binary(Token* t, node_type ty, Node* l, Node* r);
+Program* parse(Token* tokens);
+Function* function(Token* tokens);
+Node* compound(Token** rest, Token* t);
+Node* statement(Token**rest, Token* t);
+Node* expression(Token** rest, Token* t);
+Node* logicand(Token**rest, Token* t);
+Node* equality(Token**rest, Token* t);
+Node* relation(Token**rest, Token* t);
+Node* add(Token**rest, Token* t);
+Node* term(Token**rest, Token* t);
+Node* factor(Token**rest, Token* t);
+Node* unary(Token**rest, Token* t);
+Node* primary(Token**rest, Token* t);
+
 
 Node* new_node(Token* t, node_type ty){
 	Node* n = new Node();
@@ -14,23 +30,13 @@ Node* new_binary(Token* t, node_type ty, Node* l, Node* r){
 	return n;
 }
 
-Node* expression(Token** rest, Token* t);
-Function* function(Token* tokens);
-Node* term(Token**rest, Token* t);
-Node* factor(Token**rest, Token* t);
-Node* primary(Token**rest, Token* t);
-Node* statement(Token**rest, Token* t);
-Node* unary(Token**rest, Token* t);
-Node* compound(Token** rest, Token* t);
-Program* parse(Token* tokens);
-
 //func =    int identifer (stat*){stat}
 Function* function(Token* tokens){
     Function *f = new Function();
     return f;
 }
 
-//stat =    return exp;
+//compound =    statment* }
 Node* compound(Token** rest, Token* t){
     Node *s = new Node();
     while(t->get_str() != "}"){
@@ -55,8 +61,114 @@ Node* compound(Token** rest, Token* t){
     return s;
 }
 
-//expression		= term +- term
+//statement =	{ compound | "return" expr ; | int var ;
+Node* statement(Token**rest, Token* t){
+	if(t->get_str() == "{")
+		return compound(rest, t->next());
+	if(t->get_str() == "return"){
+		Node* node = new_node(t, RET);
+		Node* expr = expression(rest, t->next());
+		node->rchild = expr;
+		consume(rest, t, ";");	
+		return node;
+	}
+	if(t->get_str() == "int"){
+	}		
+	
+}
+
+//expr		=	land {|| land}*
 Node* expression(Token**rest, Token* t){
+	Node *n = logicand(rest, t);
+	t = *rest;
+	while(true){
+		Token* next = t->next();
+		if(t->check("||")){
+			n = new_binary(t, OR, n, logicand(&next, next));
+			t = next;
+			continue;
+		}
+		*rest = t;
+		return n;
+	}
+}
+
+
+
+//land = equality { && quality}*
+Node* logicand(Token**rest, Token* t){
+	Node *n = equality(rest, t);
+	t = *rest;
+	while(true){
+		Token* next = t->next();
+		if(t->check("&&")){
+			n = new_binary(t, AND, n, equality(&next, next));
+			t = next;
+			continue;
+		}
+		*rest = t;
+		return n;
+	}
+}
+
+
+//equality	=	relation { [== | !=] relation }*
+Node* equality(Token**rest, Token* t){
+	Node *n = relation(rest, t);
+	t = *rest;
+	while(true){
+		Token* next = t->next();
+		if(t->check("==")){
+			n = new_binary(t, EQUAL, n, relation(&next, next));
+			t = next;
+			continue;
+		}
+		if(t->check("!=")){
+			n = new_binary(t, NE, n, relation(&next, next));
+			t = next;
+			continue;
+		}
+		*rest = t;
+		return n;
+	}
+}
+
+
+//relation	=	add { [<|>|<=|>=] add }*
+Node* relation(Token**rest, Token* t){
+	Node *n = add(rest, t);
+	t = *rest;
+	while(true){
+		Token* next = t->next();
+		if(t->check("<")){
+			n = new_binary(t, LT, n, add(&next, next));
+			t = next;
+			continue;
+		}
+		if(t->check(">")){
+			n = new_binary(t, GT, n, add(&next, next));
+			t = next;
+			continue;
+		}
+		if(t->check(">=")){
+			n = new_binary(t, GE, n, add(&next, next));
+			t = next;
+			continue;
+		}
+		if(t->check("<=")){
+			n = new_binary(t, LE, n, add(&next, next));
+			t = next;
+			continue;
+		}
+		*rest = t;
+		return n;
+	}
+}
+
+
+
+//add		= term { [+-] term }*
+Node* add(Token**rest, Token* t){
 	Node *n = term(rest, t);
 	t = *rest;
 	while(true){
@@ -67,7 +179,7 @@ Node* expression(Token**rest, Token* t){
 			continue;
 		}
 		if(t->check("-")){
-			n = new_binary(t, MUL, n, term(&next, next));
+			n = new_binary(t, SUB, n, term(&next, next));
 			t = next;
 			continue;
 		}
@@ -76,7 +188,7 @@ Node* expression(Token**rest, Token* t){
 	}
 }
 
-//term		= factor */ factor
+//term		= factor {[*/] factor }*
 Node* term(Token**rest, Token* t){
 	Node *n = factor(rest, t);
 	t = *rest;

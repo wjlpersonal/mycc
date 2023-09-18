@@ -11,7 +11,7 @@ bool is_number(const std::string& s){
 }
 
 bool consume(Token **rest, Token *t, string str){
-    if(t->get_str()== str){
+    if(t->get_str() == str){
         *rest = t->next();
         return true;
     }
