@@ -1,10 +1,22 @@
 #include <iostream>
 #include <fstream>
+#include <iterator>
+#include <string>
 #include <vector>
 #include <string.h>
 #include <regex>
-using namespace std;
-
+using std::cin,
+	  std::cout,
+	  std::vector,
+	  std::string,
+	  std::endl,
+	  std::to_string,
+	  std::regex,
+	  std::ifstream,
+	  std::regex_iterator,
+	  std::ios,
+	  std::next,
+	  std::stoi;
 
 class Token;
 class Node;
@@ -54,6 +66,8 @@ enum node_type{
 	MUL,
 	DIV,
 	ASSIGN,
+	COMPOUND,
+	EXPR,
 
 };
 
@@ -62,12 +76,13 @@ class Node{
     public:
     Token* token=nullptr;
     node_type type=NAN;
+	data_type dtype=INT;
     Node *parent=nullptr;
     Node *lchild=nullptr;
     Node *rchild=nullptr;
-
+	
     int  val_int = 0;
-
+	
     Node(){}
     Node(Token* t, node_type ty){
         type = ty;

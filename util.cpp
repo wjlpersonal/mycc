@@ -20,10 +20,11 @@ bool consume(Token **rest, Token *t, string str){
 }
 
 Token* skip(Token *t, string str){
-    if(t->check(str)){
-        return t->next();
+    if(!t->check(str)){
+		cout << str << ":";
+		err_print("skip fail");
     }
-    return t;
+    return t->next();
 }
 
 string space(int levels){
@@ -35,6 +36,7 @@ string space(int levels){
 
 string print_expr(Node* node){
 	if(node == nullptr) return "";
+	if(node->type == EXPR) node = node->rchild;
 	if(node->type == NUM)
 		return node->token->get_str();
 	string ret = "";
@@ -48,6 +50,36 @@ string print_expr(Node* node){
 	return ret;
 }
 
+string print_stat(Node* node){
+	string ret = "";
+	if(node->type == EXPR){
+		ret.append("EXPR ");
+		ret.append(print_expr(node->rchild));
+	}
+	if(node->type == ASSIGN){
+		ret.append("ASSIGN ");
+		ret.append(node->token->get_str()+"=");
+		ret.append(print_expr(node->rchild));
+	}
+	if(node->type == RET){
+		ret.append("RET ");
+		ret.append(print_expr(node->rchild));
+	}
+	return ret;
+}
+void print_compound(Node* node, int level){
+	if(node->type != COMPOUND) err_print("Printing : not a compound!");
+	cout << space(level)<<"{"<<endl;
+	node = node->lchild;
+	while(node){
+		cout << space(level+1)<<print_stat(node)<<endl;
+		node = node->lchild;
+	}
+	cout <<space(level) <<"}"<<endl;
+	return ;
+}
+	
+
 void Pretty_printing(Program* prog){
     Function *func = prog->functions;
     int level = 1;
@@ -57,12 +89,7 @@ void Pretty_printing(Program* prog){
         cout <<space(level) <<"body:"<<endl;
         Node* body = func->body;
         level++;
-        if(body != nullptr){
-            Node* exp = body->lchild;
-            cout <<space(level) << "RETURN ";
-			cout << print_expr(exp);
-            cout << endl;
-        }
+		print_compound(body, level);
         level--;
     }
 }
