@@ -4,6 +4,7 @@ test/*
 exp.cpp
 *.s
 *.o
+*.out
 *.json
 .vscode/
 

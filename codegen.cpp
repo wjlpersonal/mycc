@@ -1,7 +1,11 @@
 #include "mycc.h"
 
-vector<node_type> unary = {NEG, LNEG, BCPL};
-vector<node_type> binary = {ADD, SUB, MUL, DIV};
+int clausecnt = 0;
+
+string re_string(string str, string snip){
+	string ret = regex_replace(str, regex("%s"), snip);
+	return ret;
+}
 
 bool node_check(Node* node, vector<node_type>& list){
 	for(auto ty : list)
@@ -9,68 +13,162 @@ bool node_check(Node* node, vector<node_type>& list){
 	return false;
 }
 
-string gen_expr(Node* node){
-	string ret = "";
-	if(node_check(node, unary)){
-		
-
+string get_clause(){
+	clausecnt ++;
+	string ret = "_clase%s";
+	ret = re_string(ret, to_string(clausecnt));
+	return ret;
 }
 
-//term      = factor {[*/] factor }*
-string gen_term(Node* node){
-	string ret = gen_factor(node->lchild);
-	if(node->type == MUL){
-		
-
-
-//factor = op factor | primary
-string gen_factor(Node* node){
-	if(!node_check(node, unary))
-		return gen_primary(node);
-	string ret = gen_factor(node->rchild);
+string gen_expr(Node* node){
+	if(node == nullptr) return "";
+	if(node->type == EXPR)
+		node = node->rchild;
+	string ret = "";
+	if(node->type == NUM){
+		string num = node->token->get_str();
+		ret.append(re_string("movl   $%s, \%eax\n", num));
+	}
 	if(node->type == NEG || node->type == BCPL){
 		ret.append("neg    \%eax\n");
 	}
 	if(node->type == LNEG){
-		reg.append("cmpl   $0, \%eax\n");
-		reg.append("movl   $0, \%eax\n");
-		reg.append("sete   \%al\n");
+		ret.append("cmpl   $0, \%eax\n");
+		ret.append("movl   $0, \%eax\n");
+		ret.append("sete   \%al\n");
+	}
+	if(node->type == ADD){
+		ret.append(gen_expr(node->rchild));
+		ret.append("push   \%eax\n");
+		ret.append(gen_expr(node->lchild));
+		ret.append("pop    \%ebx\n");
+		ret.append("add    \%ebx, \%eax\n");
+	}
+	if(node->type == SUB){
+		ret.append(gen_expr(node->rchild));
+		ret.append("push   \%eax\n");
+		ret.append(gen_expr(node->lchild));
+		ret.append("pop    \%ebx\n");
+		ret.append("sub    \%ebx, \%eax\n");
+	}
+	if(node->type == MUL){
+		ret.append(gen_expr(node->rchild));
+		ret.append("push   \%eax\n");
+		ret.append(gen_expr(node->lchild));
+		ret.append("pop    \%ebx\n");
+		ret.append("mul    \%ebx, \%eax\n");
+	}
+	if(node->type == DIV){
+		ret.append(gen_expr(node->rchild));
+		ret.append("push   \%eax\n");
+		ret.append(gen_expr(node->lchild));
+		ret.append("pop    \%ebx\n");
+		ret.append("div    \%ebx, \%eax\n");
+	}
+	if(node->type == LT){
+		ret.append(gen_expr(node->rchild));
+		ret.append("push   \%eax\n");
+		ret.append(gen_expr(node->lchild));
+		ret.append("pop    \%ebx\n");
+		ret.append("cmpl   \%ebx, \%eax\n");
+		ret.append("movl   $0, \%eax\n");
+		ret.append("setlt  \%al\n");
+	}
+	if(node->type == LE){
+		ret.append(gen_expr(node->rchild));
+		ret.append("push   \%eax\n");
+		ret.append(gen_expr(node->lchild));
+		ret.append("pop    \%ebx\n");
+		ret.append("cmpl   \%ebx, \%eax\n");
+		ret.append("movl   $0, \%eax\n");
+		ret.append("setle  \%al\n");
+	}
+	if(node->type == GT){
+		ret.append(gen_expr(node->rchild));
+		ret.append("push   \%eax\n");
+		ret.append(gen_expr(node->lchild));
+		ret.append("pop    \%ebx\n");
+		ret.append("cmpl   \%ebx, \%eax\n");
+		ret.append("movl   $0, \%eax\n");
+		ret.append("setgt  \%al\n");
+	}
+	if(node->type == GE){
+		ret.append(gen_expr(node->rchild));
+		ret.append("push   \%eax\n");
+		ret.append(gen_expr(node->lchild));
+		ret.append("pop    \%ebx\n");
+		ret.append("cmpl   \%ebx, \%eax\n");
+		ret.append("movl   $0, \%eax\n");
+		ret.append("setge  \%al\n");
+	}
+	if(node->type == EQUAL){
+		ret.append(gen_expr(node->rchild));
+		ret.append("push   \%eax\n");
+		ret.append(gen_expr(node->lchild));
+		ret.append("pop    \%ebx\n");
+		ret.append("cmpl   \%ebx, \%eax\n");
+		ret.append("movl   $0, \%eax\n");
+		ret.append("sete   \%al\n");
+	}
+	if(node->type == NE){
+		ret.append(gen_expr(node->rchild));
+		ret.append("push   \%eax\n");
+		ret.append(gen_expr(node->lchild));
+		ret.append("pop    \%ebx\n");
+		ret.append("cmpl   \%ebx, \%eax\n");
+		ret.append("movl   $0, \%eax\n");
+		ret.append("setne  \%al\n");
+	}
+	if(node->type == AND){
+		ret.append(gen_expr(node->lchild));
+		ret.append("cmpl   $0, \%eax\n");
+		string clause_a = get_clause();
+		string clause_b = get_clause();
+		ret.append("je     "+clause_a+"\n");
+		ret.append(gen_expr(node->rchild));
+		ret.append("cmpl   $0, \%eax\n");
+		ret.append("je     "+clause_a+"\n");
+		ret.append("movl   $1, \%eax\n");
+		ret.append("jmp    "+clause_b+"\n");
+		ret.append(clause_a+":\n");
+		ret.append("movl   $0, \%eax\n");
+		ret.append(clause_b+":\n");
+	}
+	if(node->type == OR){
+		ret.append(gen_expr(node->lchild));
+		ret.append("cmpl   $1, \%eax\n");
+		string clause_a = get_clause();
+		string clause_b = get_clause();
+		ret.append("je     "+clause_a+"\n");
+		ret.append(gen_expr(node->rchild));
+		ret.append("cmpl   $1, \%eax\n");
+		ret.append("je     "+clause_a+"\n");
+		ret.append("movl   $0, \%eax\n");
+		ret.append("jmp    "+clause_b+"\n");
+		ret.append(clause_a+":\n");
+		ret.append("movl   $1, \%eax\n");
+		ret.append(clause_b+":\n");
 	}
 	return ret;
 }
 
-//primary = (expr) | num
-string gen_primary(Node* node){
-	string ret = "";
-	if(node->type == NUM){
-		string num = node->token->get_str();
-		ret.append(re_string("movl   $\\s, \%eax\n", num));
-	}
-	if(node->type == EXPR){
-		string expr = gen_expr(node->rchild);
-		ret.append(expr);
-	}
-	return ret;
-}
 
-string gen_ret(Node* node){
-	string ret = "";
-	string expr = gen_expr(node->rchild);
-	ret.append(expr);
-	ret.append("ret\n");
-	return ret;
-}
-
-string re_string(string str, string snip){
-	string ret = regex_replace(str, regex("\\s"), snip);
+string gen_stat(Node* node){
+	string ret = gen_expr(node->rchild);
+	if(node->type == RET){
+		ret.append("ret\n");
+	}
+	if(node->type == COMPOUND){
+		node = node->lchild;
+		ret.append(gen_stat(node));
+	}
 	return ret;
 }
 
 string codegen(Program* prog){
-    string ret = "";
-    string fun= ".global \\s\n_\\s:\n";
+    string ret = ".global %s\n_%s:\n";
     Function *func = prog->functions;
-    fun = re_string(fun, func->name);
-    ret.append(gen_expr(func->body));
+    ret = re_string(ret, func->name);
+    ret.append(gen_stat(func->body));
     return ret;
 }

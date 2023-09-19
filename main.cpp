@@ -40,10 +40,10 @@ int compile(string addr){
 
     Pretty_printing(prog);
 	
-	/*
     string code =  codegen(prog);
     cout << endl<<"codegen:"<<endl << code << endl;
 
+	/*
     fstream outfile(path+"assembly.s", ios::out);
     outfile << code;
     outfile.close();
