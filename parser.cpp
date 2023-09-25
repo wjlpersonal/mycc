@@ -1,5 +1,11 @@
 #include "mycc.h"
 
+Token* new_token(string str, token_type ty){
+	Token *t = new Token();
+	*t = Token(str, ty);
+	return t;
+}
+
 Node* new_node(Token* t, node_type ty);
 Node* new_binary(Token* t, node_type ty, Node* l, Node* r);
 Program* parse(Token* tokens);
@@ -11,6 +17,7 @@ Node* statement(Token**rest, Token* t);
 
 //expression
 Node* expression(Token** rest, Token* t);
+Node* conditional(Token** rest, Token* t);
 Node* logicand(Token**rest, Token* t);
 Node* equality(Token**rest, Token* t);
 Node* relation(Token**rest, Token* t);
@@ -19,6 +26,7 @@ Node* term(Token**rest, Token* t);
 Node* factor(Token**rest, Token* t);
 Node* unary(Token**rest, Token* t);
 Node* primary(Token**rest, Token* t);
+Node* logicor(Token**rest, Token* t);
 
 
 Node* new_node(Token* t, node_type ty){
@@ -27,7 +35,7 @@ Node* new_node(Token* t, node_type ty){
     return n;
 }
 
-Node* new_assign(Token* t, node_type ty, data_type dty){
+Node* new_declare(Token* t, node_type ty, data_type dty){
 	Node* n = new_node(t, ty);
 	n->dtype = dty;
 	return n;
@@ -40,6 +48,44 @@ Node* new_binary(Token* t, node_type ty, Node* l, Node* r){
     return n;
 }
 
+static int idcnt = 0;
+vector<Node*> lvars;
+
+bool find_var(Token* t){
+	string str = t->get_str();
+	for(auto var: lvars)
+		if(var->token->check(str))
+			return true;
+	return false;
+}
+
+//new a local variable
+Node* new_lvar(Token* t){
+	if(find_var(t)){
+		cout << t->get_str()<<":";
+		err_print("redeclaring an identifer!");
+	}
+	if(t->get_type() != IDENTIFER){
+		cout << t->get_str() << " ";
+		err_print("is not an IDENTIFER");
+	}
+	idcnt ++;
+	Node *node = new_node(t, VAR);
+	node->idcnt = idcnt;
+	lvars.push_back(node);
+	return node;
+}
+
+Node* get_var(Token* t){
+	string str = t->get_str();
+	for(auto var: lvars){
+		if(var->token->check(str))
+			return var;
+	}
+	cout << str << endl;
+	err_print("can't find this var");
+	return nullptr;
+}
 
 //func =    int identifer () { compound
 Function* function(Token** rest, Token* t){
@@ -55,7 +101,6 @@ Function* function(Token** rest, Token* t){
     return func;
 }
 
-
 //compound =    statment* }
 Node* compound(Token** rest, Token* t){
     Node *s = new_node(t, COMPOUND);
@@ -63,8 +108,14 @@ Node* compound(Token** rest, Token* t){
 	Node **pre = &s;
     while(t->get_str() != "}"){
         if(t->get_type() == EOT) err_print("need }");
-		(*pre)->lchild = statement(rest,t);
-		pre = &((*pre)->lchild);
+		if(*pre == s){
+			(*pre)->rchild = statement(rest,t);
+			pre = &((*pre)->rchild);
+		}
+		else{
+			(*pre)->next = statement(rest,t);
+			pre = &((*pre)->next);
+		}
 		t = *rest;
     }
 	t = skip(t, "}");
@@ -72,10 +123,32 @@ Node* compound(Token** rest, Token* t){
     return s;
 }
 
-//statement =   { compound | "return" expr ; | int var ; | expr
+//statement =   { compound | if (statement) [else statement]? |
+//				"return" expr ; | dtype(int) var ; | expr
 Node* statement(Token**rest, Token* t){
     if(t->get_str() == "{")
         return compound(rest, t);
+	if(t->get_str() == "if"){
+		Node* node = new_node(t, IF);
+		t = skip(t->next(), "(");
+		node->lchild = expression(rest, t);
+		t = skip(*rest, ")");
+		if(t->get_str() == "{"){
+			t = skip(t, "{");
+			node->rchild = compound(rest, t);
+		}
+		else node->rchild = statement(rest, t);
+		t = *rest;
+		if(t->get_str() == "else"){
+			t = t->next();
+			node->next = statement(rest, t);
+		}
+		if(node->next && node->next->type == DECLARE)
+			err_print("can't declare a var in if");
+		return node;
+	}
+	if(t->get_str() == "else")
+		err_print("an else without if");
     if(t->get_str() == "return"){
         Node* node = new_node(t, RET);
         Node* expr = expression(rest, t->next());
@@ -88,25 +161,61 @@ Node* statement(Token**rest, Token* t){
         t = t->next();
         if(t->get_type() != IDENTIFER)
 			err_print("int x is not a identififer");
-		Node* node = new_assign(t, ASSIGN, INT);
+		Node* var = new_lvar(t);
+		Node* node = new_declare(t, DECLARE, INT);
+		node->lchild = var;
 		t = t->next();
 		if(t->check("=")){
 			t = skip(t, "=");
 			node->rchild = expression(rest, t);
 			t = *rest;
+			t = skip(t, ";");
+			*rest = t;
+			return node;
 		}
+		Token* zero_t = new_token("0", LITNUM);
+		node->rchild = new_node(zero_t, NUM);
 		t = skip(t, ";");
 		*rest = t;	
 		return node;
  	}
-	Node* s = expression(rest, t);
+	Node* s = new_node(t, EXPR);
+	s->rchild = expression(rest, t);
 	*rest = skip(*rest, ";");
 	return s;
 }
 
-//expr      =   land {|| land}*
+//expr 		=	assign   id = expr | conditional
 Node* expression(Token**rest, Token* t){
-	Node *expr = new_node(t, EXPR);
+	if(t->get_type() == IDENTIFER && t->next()->check("=")){
+		if(!find_var(t)){
+			cout << t->get_str()<<":";
+			err_print("var not declared");
+		}
+		Node* var = get_var(t);
+		t = t->next();
+		Node* expr = expression(rest, t->next());
+		return new_binary(t, ASSIGN, var, expr);
+	}
+	return conditional(rest, t);
+}
+
+//conditional = lor [ ? expr : conditional] ? 
+Node* conditional(Token**rest , Token* t){
+	Node* node = logicor(rest, t);
+	t = *rest;
+	if(t->get_str() != "?")
+		return node;
+	node = new_binary(t, CONDITIONAL, node, expression(rest, t->next()));
+	t = *rest;
+	if(t->get_str() != ":") err_print("need :");
+	t = t->next();
+	node->next = conditional(rest, t);
+	return node;
+}
+
+//lor      =   land {|| land}*
+Node* logicor(Token**rest, Token* t){
     Node *n = logicand(rest, t);
     t = *rest;
     while(true){
@@ -117,8 +226,7 @@ Node* expression(Token**rest, Token* t){
             continue;
         }
         *rest = t;
-		expr->rchild = n;
-        return expr;
+        return n;
     }
 }
 
@@ -268,8 +376,13 @@ Node* primary(Token** rest, Token* t){
         return expr;
     }
     Node *p = new Node();
-    p = new_node(t, NUM);
-	if(t->get_type()==LITNUM) p->val_int = stoi(t->get_str());
+	if(t->get_type()==LITNUM){
+    	p = new_node(t, NUM);
+		p->val_int = stoi(t->get_str());
+	}
+	if(t->get_type()==IDENTIFER){
+		p = get_var(t);
+	}
     *rest = t->next();
     return p;
 }

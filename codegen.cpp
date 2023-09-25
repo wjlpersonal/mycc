@@ -25,6 +25,9 @@ string gen_expr(Node* node){
 	if(node->type == EXPR)
 		node = node->rchild;
 	string ret = "";
+	if(node->type == VAR){
+
+	}
 	if(node->type == NUM){
 		string num = node->token->get_str();
 		ret.append(re_string("movl   $%s, \%eax\n", num));
@@ -149,6 +152,10 @@ string gen_expr(Node* node){
 		ret.append("movl   $1, \%eax\n");
 		ret.append(clause_b+":\n");
 	}
+	if(node->type == ASSIGN){
+
+
+	}
 	return ret;
 }
 
@@ -165,10 +172,21 @@ string gen_stat(Node* node){
 	return ret;
 }
 
+string gen_compound(Node* node){
+	if(!node) return "";
+	node = node->rchild;
+	string ret = "";
+	while(node){
+		ret.append(gen_stat(node));
+		node = node->next;
+	}
+	return ret;
+}
+
 string codegen(Program* prog){
     string ret = ".global %s\n_%s:\n";
     Function *func = prog->functions;
     ret = re_string(ret, func->name);
-    ret.append(gen_stat(func->body));
+    ret.append(gen_compound(func->body));
     return ret;
 }

@@ -68,6 +68,10 @@ enum node_type{
 	ASSIGN,
 	COMPOUND,
 	EXPR,
+	DECLARE,
+	VAR,
+	IF,
+	CONDITIONAL,
 
 };
 
@@ -77,11 +81,12 @@ class Node{
     Token* token=nullptr;
     node_type type=NAN;
 	data_type dtype=INT;
-    Node *parent=nullptr;
+    Node *next=nullptr;
     Node *lchild=nullptr;
     Node *rchild=nullptr;
 	
     int  val_int = 0;
+	int  idcnt = 0;
 	
     Node(){}
     Node(Token* t, node_type ty){

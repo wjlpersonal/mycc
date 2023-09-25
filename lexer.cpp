@@ -7,12 +7,14 @@ vector<string> punctuators = {
 	"]",
 	"{",
 	"}",
-	";"
+	";",
 };
 
 vector<string> keywords = {
 	"return",
-	"int"
+	"int",
+	"if",
+	"else",
 };
 
 vector<string> oprators = {
@@ -26,7 +28,10 @@ vector<string> oprators = {
 	"!",
 	"|",
 	"&",
-	"="
+	"=",
+	"?",
+	":",
+
 };
 
 vector<string> long_op = {
@@ -61,7 +66,7 @@ Token* lex(vector<string> buff){
 	string punct = vec2str(punctuators);
     regex re_op("["+op+"]");
     regex re_num("[0-9]+");
-    regex re_keyword("int|return|float");
+    regex re_keyword("int|return|float|if|else");
     regex re_punct("["+punct+"]");
     regex re("["+op+punct+"]|[^"+op+punct+"\\s]+");
     for (auto line : buff){

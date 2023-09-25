@@ -1,5 +1,7 @@
 #include "mycc.h"
 
+void print_compound(Node* node, int level);
+
 void err_print(string str){
     cout << str << endl;
     exit(1);
@@ -34,11 +36,20 @@ string space(int levels){
     return ret;
 }
 
+string idstr(Node* node){
+	string num = to_string(node->idcnt);
+	if(node->type == VAR)
+		return "VAR"+num;
+	return node->token->get_str()+"IDNUM FAILED";
+}
+
 string print_expr(Node* node){
 	if(node == nullptr) return "";
 	if(node->type == EXPR) node = node->rchild;
 	if(node->type == NUM)
 		return node->token->get_str();
+	if(node->type == VAR)
+		return idstr(node);
 	string ret = "";
 	Node *l = node->lchild;
 	Node *r = node->rchild;
@@ -46,34 +57,48 @@ string print_expr(Node* node){
 	ret.append(print_expr(l));
 	ret.append(node->token->get_str());
 	ret.append(print_expr(r));
+	if(node->type == CONDITIONAL)
+		ret.append(":"+print_expr(node->next));
 	ret.append(")");
 	return ret;
 }
 
-string print_stat(Node* node){
-	string ret = "";
-	if(node->type == EXPR){
-		ret.append("EXPR ");
-		ret.append(print_expr(node->rchild));
-	}
+void print_stat(Node* node, int level){
+	if(node->type == EXPR) node = node->rchild;
 	if(node->type == ASSIGN){
-		ret.append("ASSIGN ");
-		ret.append(node->token->get_str()+"=");
-		ret.append(print_expr(node->rchild));
+		cout << space(level) << "ASSIGN ";
+		cout << (print_expr(node->rchild)) <<endl;
+	}
+	if(node->type == DECLARE){
+		cout<<space(level) <<"DECLARE ";
+		cout << idstr(node->lchild) << "=";
+		cout << print_expr(node->rchild) << endl;
 	}
 	if(node->type == RET){
-		ret.append("RET ");
-		ret.append(print_expr(node->rchild));
+		cout << space(level) << "RET ";
+		cout << print_expr(node->rchild) << endl;
 	}
-	return ret;
+	if(node->type == IF){
+		cout << space(level) << "IF ";
+		cout << print_expr(node->lchild) << ":" << endl;
+		if(node->rchild->type == COMPOUND)
+			print_compound(node->rchild, level+1);
+		else
+			print_stat(node->rchild, level+1);
+		if(node->next){
+			cout << space(level) << "ELSE"<<endl;
+			print_stat(node->next, level+1);
+		}
+	}
 }
+
 void print_compound(Node* node, int level){
 	if(node->type != COMPOUND) err_print("Printing : not a compound!");
 	cout << space(level)<<"{"<<endl;
-	node = node->lchild;
+	node = node->rchild;
 	while(node){
-		cout << space(level+1)<<print_stat(node)<<endl;
-		node = node->lchild;
+		print_stat(node, level+1);
+		node = node->next;
 	}
 	cout <<space(level) <<"}"<<endl;
 	return ;
